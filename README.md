@@ -4,6 +4,14 @@ A Clojure library designed to ... well, that part is up to you.
 
 ## Usage
 
+Run backend on `localhost:3000`.
+
+Frontend at http://127.0.0.1:5173/`
+
+## TODO
+
+ - CI build + test
+
 
 ### Look at
 
