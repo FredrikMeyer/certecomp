@@ -8,7 +8,8 @@
                  [ring/ring-jetty-adapter "1.8.2"]
                  [ring/ring-mock "0.4.0"]
                  [metosin/reitit "0.5.18"]
-                 [org.clojure/java.jdbc "0.7.8"]
+                 [integrant/integrant "0.8.0"]
+                 [com.github.seancorfield/next.jdbc "1.3.847"]
                  [org.xerial/sqlite-jdbc "3.23.1"]]
   :profiles {:dev {:dependencies
                    [[org.clojure/clojurescript "1.11.60"]

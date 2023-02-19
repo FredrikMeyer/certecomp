@@ -48,6 +48,9 @@ https://github.com/aliaksandr-s/prototyping-with-clojure/blob/master/tutorial/ch
 logging
 https://github.com/ptaoussanis/timbre
 
+
+https://yobriefca.se/blog/2014/04/29/managing-environment-variables-in-clojure/
+
 ## License
 
 

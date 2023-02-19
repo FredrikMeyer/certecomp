@@ -2,7 +2,6 @@
   (:require
    [certecomp.db :as db]
    [muuntaja.core :as m]
-   [clojure.java.jdbc :as jdbc]
    [reitit.ring :as ring]
    [reitit.ring.coercion :as rrc]
    [reitit.ring.middleware.exception :as exception]
@@ -42,15 +41,11 @@
     (let [response (handler request)]
       (-> response
           (assoc-in [:headers "Access-Control-Allow-Origin"] "http://127.0.0.1:5173")
-          (assoc-in [:headers "Access-Control-Allow-Headers"] "content-type")
-          )
-      
-      ))
-  )
+          (assoc-in [:headers "Access-Control-Allow-Headers"] "content-type")))))
 
 (def app-handler
   (-> #'app
-(add-cors)
+      (add-cors)
       ;; (wrap-content-type "application/json")
       ))
 

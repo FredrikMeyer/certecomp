@@ -37,7 +37,7 @@ function NewType() {
     },
   });
 
-  const [value, setValue] = React.useState("");
+  const [value, setValue] = React.useState("name");
 
   const validation = React.useMemo(
     () => ExerciseType.shape.name.safeParse(value),
