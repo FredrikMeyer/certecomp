@@ -6,26 +6,49 @@
    [reitit.ring.coercion :as rrc]
    [reitit.ring.middleware.exception :as exception]
    [reitit.ring.middleware.muuntaja :as rrmm]
+   [reitit.coercion.spec]
+   [reitit.core :as r]
    [ring.util.response :as resp]
-   [ring.adapter.jetty :as jetty]))
+   [ring.adapter.jetty :as jetty]
+
+   [clojure.spec.alpha :as s]))
+
+(s/def ::exercise-id int?)
+(s/def ::get-set-path-params (s/keys :req-un [::exercise-id]))
+(s/def ::string string?)
+
+(def router
+  (ring/router ["/api"
+                ["/types" {:get {:handler (fn [_]
+                                            (resp/response (db/get-exercise-types)))}
+                           :post {:parameters {:body {:name ::string}}
+                                  :handler (fn [{:keys [body-params] :as request}]
+                                             (println body-params)
+                                             (db/create-exercise-type (:name body-params))
+                                             (resp/response "ok"))}}]
+                ["/set" ["" {:post {:parameters {:body {:exercise-id ::exercise-id}}
+                                    :handler (fn [r]
+                                               ;; (println body-params)
+                                               ;; (db/create-set 0 0 5 50)
+                                               (resp/response "dddddd"))}
+                             :get {:handler (fn [r] (resp/response "jadda"))}}]
+                 ["/:exercise-id" {:parameters {:path ::get-set-path-params}
+                                   :get {:handler (fn [{path-params :path-params}]
+                                                    (let [exercise-id (:exercise-id path-params)]
+                                                      (resp/response (db/list-sets exercise-id))))}}]]
+                ["/exercise" {:get {:handler (fn [request]
+                                               (resp/response (db/get-exercises)))}}]]
+
+               {:data {:muuntaja m/instance
+                       :coercion reitit.coercion.spec/coercion
+                       :middleware [rrmm/format-middleware
+                                    exception/exception-middleware
+                                    rrc/coerce-response-middleware
+                                    rrc/coerce-request-middleware]}}))
 
 (def app
   (ring/ring-handler
-   (ring/router ["/api"
-                 ["/types" {:get {:handler (fn [request]
-                                             (resp/response (db/get-exercise-types)))}
-                            :post {:handler (fn [{:keys [body-params] :as request}]
-                                              (println body-params)
-                                              (db/create-exercise-type (:name body-params))
-                                              (resp/response "ok"))}}]
-                 ["/set" {:get {:handler (fn [request]
-                                           (resp/response []))}}]]
-
-                {:data {:muuntaja m/instance
-                        :middleware [rrmm/format-middleware
-                                     exception/exception-middleware
-                                     rrc/coerce-response-middleware
-                                     rrc/coerce-request-middleware]}})
+   router
 
    (constantly {:status 404 :body "Unknown path."})))
 
