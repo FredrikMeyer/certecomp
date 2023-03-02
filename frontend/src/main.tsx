@@ -7,6 +7,8 @@ import { CssBaseline } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
 import { ThemeProvider } from "@emotion/react";
 import { QueryClient, QueryClientProvider } from "react-query";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import ErrorPage from "./ErrorPage";
 
 const theme = createTheme();
 
@@ -19,8 +21,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <CssBaseline />
     <StyledEngineProvider>
       <ThemeProvider theme={theme}>
-        <QueryClientProvider client={queryClient}>
-          <App />
+          <QueryClientProvider client={queryClient}>
+              <App />
         </QueryClientProvider>
       </ThemeProvider>
     </StyledEngineProvider>

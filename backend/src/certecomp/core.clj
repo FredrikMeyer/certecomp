@@ -21,15 +21,16 @@
 (s/def ::id int?)
 (s/def ::delete-type-params (s/keys :req-un [::id]))
 (s/def ::string string?)
+(s/def ::float-or-int (s/or :float float? :int int?))
 
 (def router
   (ring/router ["/api"
                 [""
                  ["/docs/*" {:no-doc true
                              :get (swagger-ui/create-swagger-ui-handler {:url "/api/swagger.json"})}]
-                 ["/swagger.json" {:get (swagger/create-swagger-handler)}]
-                 ]
+                 ["/swagger.json" {:get (swagger/create-swagger-handler)}]]
                 ["/types"
+                 {:swagger {:tags ["types"]}}
                  ["" {:get {:summary "List exercise types."
                             :handler (fn [_]
                                        (resp/response (db/get-exercise-types)))}
@@ -39,18 +40,29 @@
                                         (println body-params)
                                         (db/create-exercise-type (:name body-params))
                                         (resp/response "ok"))}}]
-                 ["/:id" {   :parameters {:path ::delete-type-params}
+                 ["/:id" {:parameters {:path ::delete-type-params}
                           :delete {:summary "Delete an exercise type."
                                    :handler (fn [{path-params :path-params}]
                                               (println path-params)
+                                              (let [id (:id path-params)]
+                                                (db/delete-exercise-type id))
                                               (resp/response "hei"))}}]]
                 ["/set"
-                 ["" {
-                      :post {:summary "Create a new set."
-                             :parameters {:body {:exercise-id ::exercise-id}}
-                             :handler (fn [r]
-                                               ;; (println body-params)
-                                               ;; (db/create-set 0 0 5 50)
+                 {:swagger {:tags ["set"]}}
+                 ["" {:post {:summary "Create a new set."
+                             :parameters {:body {:exercise-id ::exercise-id
+                                                 :reps int?
+                                                 :reps-goal int?
+                                                 :weight ::float-or-int}}
+                             :handler (fn [{:keys [body-params]}]
+                                        (println body-params)
+                                        (let [reps (:reps body-params)
+                                              reps-goal (:reps-goal body-params)
+                                              exercise-id (:exercise-id body-params)
+                                              weight (:weight body-params)]
+                                          (db/create-set exercise-id reps reps-goal weight))
+                                        ;; (db/create-set 0 0 5 50)
+
                                         (resp/response "dddddd"))}
                       :get {:handler (fn [r] (resp/response "jadda"))}}]
                  ["/:exercise-id" {:parameters {:path ::get-set-path-params}
@@ -58,6 +70,7 @@
                                                     (let [exercise-id (:exercise-id path-params)]
                                                       (resp/response (db/list-sets exercise-id))))}}]]
                 ["/exercise" {:summary "Get all registered exercises."
+                              :swagger {:tags ["exercises"]}
                               :get {:handler (fn [request]
                                                (resp/response (db/get-exercises)))}}]]
 
@@ -88,6 +101,7 @@
     (let [response (handler request)]
       (-> response
           (assoc-in [:headers "Access-Control-Allow-Origin"] "http://127.0.0.1:5173")
+          (assoc-in [:headers "Access-Control-Allow-METHODS"] "GET,POST,DELETE")
           (assoc-in [:headers "Access-Control-Allow-Headers"] "content-type")))))
 
 (def app-handler

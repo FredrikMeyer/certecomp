@@ -78,11 +78,12 @@
 
 (defn get-exercises []
   (with-open [c (get-connection)]
-    (let [exercises (sql/query c ["select * from exercise"])]
+    (let [exercises (sql/query c ["select * from exercise inner join exercisetypes on exercise.type=exercisetypes.id"])]
       (for [exercise exercises]
         {:id (:exercise/id exercise)
          :date (:exercise/date exercise)
-         :type (:exercise/type exercise)
+         :type {:id (:exercise/type exercise)
+                :name (:exercisetypes/name exercise)}
          :sets (list-sets (:exercise/id exercise))}))))
 
 ;; (try (create-exercise-type "knebøy") (catch Exception e (.toString (.getResultCode e))))
@@ -94,8 +95,11 @@
   (create-exercise-type "knebøy")
   (create-exercise-type "markløft")
 
-  (jdbc/query db ["select * from exercisetypes"])
-  (jdbc/query db ["select json_extract(testjson.stuff) from testjson"])
+  (sql/query db ["select * from exercisetypes where id=?" 1])
+
+    (sql/query db ["select * from exercisetypes inner join exercise on exercise.type"])
+
+        (sql/query db ["select * from exercise"])
 
   (jdbc/execute! db ["drop table sets"])
   (jdbc/execute! db ["drop table exercise"])

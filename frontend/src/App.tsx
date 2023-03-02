@@ -1,9 +1,19 @@
 import React from "react";
-import { AppBar, Box, Button, Container, TextField } from "@mui/material";
+import {
+  AppBar,
+  Box,
+  Button,
+  Container,
+  IconButton,
+  TextField,
+} from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import "./App.css";
 
 import { z, ZodError } from "zod";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import ErrorPage from "./ErrorPage";
 
 const ExerciseType = z.object({ id: z.number(), name: z.string().min(1) });
 const ExerciseTypes = z.array(ExerciseType);
@@ -16,7 +26,11 @@ const ExerciseSet = z.object({
   weight: z.nullable(z.number().positive()),
 });
 
-const Exercise = z.object({ id: z.number(), sets: z.array(ExerciseSet) });
+const Exercise = z.object({
+  id: z.number(),
+  sets: z.array(ExerciseSet),
+  type: ExerciseType,
+});
 const Exercises = z.array(Exercise);
 type Exercise = z.infer<typeof Exercise>;
 type Exercises = z.infer<typeof Exercises>;
@@ -91,21 +105,7 @@ function NewType() {
   );
 }
 
-function ExercisesList() {
-  const { data: exercises } = useQuery<Exercises>("exercises", getExercises);
-
-  return (
-    <ul>
-      {(exercises || []).map((ex) => (
-        <li key={ex.id}>
-          {ex.id}. Sets: {ex.sets.length}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function App() {
+function Types() {
   const { data, isLoading, error } = useQuery<
     ExerciseType[],
     ZodError<ExerciseType[]>
@@ -119,22 +119,59 @@ function App() {
       queryClient.invalidateQueries("types");
     },
   });
+  return (
+    <Box>
+      {data
+        ? data.map((el) => (
+            <div key={el.id}>
+              {el.name}
+              <IconButton
+                aria-label="delete"
+                onClick={() => deleteMutation.mutate(el.id)}
+              >
+                <ClearIcon />
+              </IconButton>
+            </div>
+          ))
+        : "Loading"}
+      <NewType />
+    </Box>
+  );
+}
 
+function ExercisesList() {
+  const { data: exercises } = useQuery<Exercises>("exercises", getExercises);
+
+  return (
+    <ul>
+      {(exercises || []).map((ex) => (
+        <li key={ex.id}>
+          {ex.id}. Type: {ex.type.name}. Sets: {ex.sets.length}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const router = createBrowserRouter([
+  { path: "/", element: <span>hei</span> },
+  {
+    path: "/exercise",
+    element: <ExercisesList />,
+  },
+  {
+    path: "/types",
+    element: <Types />,
+  },
+]);
+
+function App() {
   return (
     <Container maxWidth={false}>
       <AppBar>Certe Comp</AppBar>
-      <Box>
-        {data
-          ? data.map((el) => (
-              <div key={el.id}>
-                {el.name}
-                <span onClick={() => deleteMutation.mutate(el.id)}>X</span>
-              </div>
-            ))
-          : "Loading"}
-      </Box>
-      <NewType />
-      <ExercisesList />
+      <a href="/exercise">Exercises</a>
+      <a href="/types">Types</a>
+      <RouterProvider router={router} />
     </Container>
   );
 }
