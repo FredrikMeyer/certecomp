@@ -1,55 +1,79 @@
 (ns certecomp.core
   (:require
    [certecomp.db :as db]
+   [clojure.spec.alpha :as s]
    [muuntaja.core :as m]
+   [reitit.coercion.spec]
+   [reitit.core :as r]
    [reitit.ring :as ring]
+   [reitit.swagger :as swagger]
+   [reitit.swagger-ui :as swagger-ui]
+   [camel-snake-kebab.core :as csk]
    [reitit.ring.coercion :as rrc]
    [reitit.ring.middleware.exception :as exception]
    [reitit.ring.middleware.muuntaja :as rrmm]
-   [reitit.coercion.spec]
-   [reitit.core :as r]
-   [ring.util.response :as resp]
    [ring.adapter.jetty :as jetty]
-
-   [clojure.spec.alpha :as s]))
+   [ring.util.response :as resp]))
 
 (s/def ::exercise-id int?)
 (s/def ::get-set-path-params (s/keys :req-un [::exercise-id]))
+
+(s/def ::id int?)
+(s/def ::delete-type-params (s/keys :req-un [::id]))
 (s/def ::string string?)
 
 (def router
   (ring/router ["/api"
-                ["/types" {:get {:handler (fn [_]
-                                            (resp/response (db/get-exercise-types)))}
-                           :post {:parameters {:body {:name ::string}}
-                                  :handler (fn [{:keys [body-params] :as request}]
-                                             (println body-params)
-                                             (db/create-exercise-type (:name body-params))
-                                             (resp/response "ok"))}}]
-                ["/set" ["" {:post {:parameters {:body {:exercise-id ::exercise-id}}
-                                    :handler (fn [r]
+                [""
+                 ["/docs/*" {:no-doc true
+                             :get (swagger-ui/create-swagger-ui-handler {:url "/api/swagger.json"})}]
+                 ["/swagger.json" {:get (swagger/create-swagger-handler)}]
+                 ]
+                ["/types"
+                 ["" {:get {:summary "List exercise types."
+                            :handler (fn [_]
+                                       (resp/response (db/get-exercise-types)))}
+                      :post {:summary "Create a new exercise type."
+                             :parameters {:body {:name ::string}}
+                             :handler (fn [{:keys [body-params] :as request}]
+                                        (println body-params)
+                                        (db/create-exercise-type (:name body-params))
+                                        (resp/response "ok"))}}]
+                 ["/:id" {   :parameters {:path ::delete-type-params}
+                          :delete {:summary "Delete an exercise type."
+                                   :handler (fn [{path-params :path-params}]
+                                              (println path-params)
+                                              (resp/response "hei"))}}]]
+                ["/set"
+                 ["" {
+                      :post {:summary "Create a new set."
+                             :parameters {:body {:exercise-id ::exercise-id}}
+                             :handler (fn [r]
                                                ;; (println body-params)
                                                ;; (db/create-set 0 0 5 50)
-                                               (resp/response "dddddd"))}
-                             :get {:handler (fn [r] (resp/response "jadda"))}}]
+                                        (resp/response "dddddd"))}
+                      :get {:handler (fn [r] (resp/response "jadda"))}}]
                  ["/:exercise-id" {:parameters {:path ::get-set-path-params}
                                    :get {:handler (fn [{path-params :path-params}]
                                                     (let [exercise-id (:exercise-id path-params)]
                                                       (resp/response (db/list-sets exercise-id))))}}]]
-                ["/exercise" {:get {:handler (fn [request]
+                ["/exercise" {:summary "Get all registered exercises."
+                              :get {:handler (fn [request]
                                                (resp/response (db/get-exercises)))}}]]
 
-               {:data {:muuntaja m/instance
+               {:data {:muuntaja (m/create
+                                  (assoc-in m/default-options
+                                            [:formats "application/json" :encoder-opts]
+                                            {:encode-key-fn csk/->camelCaseString}))
                        :coercion reitit.coercion.spec/coercion
                        :middleware [rrmm/format-middleware
-                                    exception/exception-middleware
+                                    ;; exception/exception-middleware
                                     rrc/coerce-response-middleware
                                     rrc/coerce-request-middleware]}}))
 
 (def app
   (ring/ring-handler
    router
-
    (constantly {:status 404 :body "Unknown path."})))
 
 (defonce app-server-instance (atom nil))
@@ -81,38 +105,3 @@
   (when @app-server-instance
     (.stop @app-server-instance))
   (reset! app-server-instance nil))
-
-;; (jdbc/db-do-commands db ["SELECT * FRM ff"])
-
-;; (defn create-db
-;;   "create db and table"
-;;   []
-;;   (try (jdbc/db-do-commands db
-;;                             (jdbc/create-table-ddl :exercises
-;;                                                    [[:timestamp :datetime :default :current_timestamp]
-;;                                                     [:url :text]
-;;                                                     [:title :text]
-;;                                                     [:body :text]]))
-;;        (catch Exception e
-;;          (println (.getMessage e)))))
-
-;; (create-db)
-
-;; (jdbc/db-do-commands db ["SELECT * FROM news"])
-
-(comment
-  (jdbc/db-do-commands db
-                       (jdbc/create-table-ddl :mytable [[:name "varchar(32)" :primary :key]]))
-
-  (jdbc/db-do-commands db
-                       (jdbc/query db ["SELECT * FROM mytable"]))
-  (jdbc/query db ["SELECT * FROM mytable"])
-
-  (jdbc/query db ["INSERT INTO mytable (name) values (?)" "hei"])
-
-  (jdbc/insert! db :mytable {:name "heddsdsdu"})
-
-  (jdbc/query db [])
-
-  (jdbc/query db ["select * from sqlite_master where type='table'"])
-  ({:type "table", :name "news", :tbl_name "news", :rootpage 2, :sql "CREATE TABLE news (timestamp datetime default current_timestamp, url text, title text, body text)"} {:type "table", :name "mytable", :tbl_name "mytable", :rootpage 3, :sql "CREATE TABLE mytable (name varchar(32) primary key)"} {:type "table", :name "user2", :tbl_name "user2", :rootpage 5, :sql "CREATE TABLE user2(id integer primary key, name text, interests json)"}))

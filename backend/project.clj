@@ -8,6 +8,8 @@
                  [ring/ring-jetty-adapter "1.8.2"]
                  [ring/ring-mock "0.4.0"]
                  [metosin/reitit "0.5.18"]
+                 [metosin/reitit-swagger "0.6.0"]
+                 [metosin/reitit-swagger-ui "0.6.0"]
                  [integrant/integrant "0.8.0"]
                  [com.github.seancorfield/next.jdbc "1.3.847"]
                  [org.xerial/sqlite-jdbc "3.23.1"]]
