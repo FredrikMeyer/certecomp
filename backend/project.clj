@@ -17,5 +17,6 @@
                    [[org.clojure/clojurescript "1.11.60"]
                     [com.bhauman/figwheel-main "0.2.18"]]}}
   :repl-options {:init-ns certecomp.core}
+  :plugins [[lein-cloverage "1.2.2"]]
   :source-paths ["src"]
   :resource-paths ["target" "resources"])
