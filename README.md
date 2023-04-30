@@ -1,6 +1,12 @@
 # certecomp
 
-A Clojure library designed to ... well, that part is up to you.
+[![codecov](https://codecov.io/gh/FredrikMeyer/certecomp/branch/main/graph/badge.svg?token=KFQauFSPcQ)](https://codecov.io/gh/FredrikMeyer/certecomp)
+
+At the moment I'm just trying to build an exercise logger with a Clojure backend.
+
+> _certe computa_ is Latin for "be sure to calculate"
+
+
 
 ## Usage
 

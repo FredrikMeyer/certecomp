@@ -11,12 +11,13 @@
                  [metosin/reitit-swagger "0.6.0"]
                  [metosin/reitit-swagger-ui "0.6.0"]
                  [integrant/integrant "0.8.0"]
+                 [com.taoensso/timbre "6.1.0"]
                  [com.github.seancorfield/next.jdbc "1.3.847"]
                  [org.xerial/sqlite-jdbc "3.23.1"]]
   :profiles {:dev {:dependencies
                    [[org.clojure/clojurescript "1.11.60"]
                     [com.bhauman/figwheel-main "0.2.18"]]}}
   :repl-options {:init-ns certecomp.core}
-  :plugins [[lein-cloverage "1.2.2"]]
+  :plugins [[lein-cloverage "1.2.4"]]
   :source-paths ["src"]
   :resource-paths ["target" "resources"])
