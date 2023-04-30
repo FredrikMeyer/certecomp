@@ -13,7 +13,8 @@
                  [integrant/integrant "0.8.0"]
                  [com.taoensso/timbre "6.1.0"]
                  [com.github.seancorfield/next.jdbc "1.3.847"]
-                 [org.xerial/sqlite-jdbc "3.23.1"]]
+                 [org.xerial/sqlite-jdbc "3.23.1"]
+                 [com.github.seancorfield/honeysql "2.4.1026"]]
   :profiles {:dev {:dependencies
                    [[org.clojure/clojurescript "1.11.60"]
                     [com.bhauman/figwheel-main "0.2.18"]]}}

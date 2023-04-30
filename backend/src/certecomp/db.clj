@@ -1,18 +1,12 @@
 (ns certecomp.db
   (:require [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
-            [next.jdbc.result-set :as rs]
             [integrant.core :as ig]
-            [clojure.java.io :as io]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [honey.sql :as hsql]
+            [honey.sql.helpers :as h]))
 
-(def db
-  ^:private
-  {:dbtype      "sqlite"
-   :dbname      "db/database.db"
-   :classname   "org.sqlite.JDBC"})
-
-(def config
+(def ^:dynamic *config*
   {:db {:options {:dbtype "sqlite"
                   :dbname      "db/database.db"
                   :classname   "org.sqlite.JDBC"}}})
@@ -20,9 +14,35 @@
 (defmethod ig/init-key :db [_ b2]
   (let [datasource (jdbc/get-datasource (:options b2))]
     (with-open [c (jdbc/get-connection datasource)]
-      (let [sql-text (slurp (io/resource "tables.sql"))]
-        (log/info "Creating DB tables if they do not exist.")
-        (println (jdbc/execute! c [sql-text]))))
+      (log/info "Creating DB tables if they do not exist.")
+
+      (jdbc/execute! c ["PRAGMA foreign_keys = ON"])
+      (doseq [s [(hsql/format
+                  (h/create-table :exercisetypes :if-not-exists
+                                  (h/with-columns
+                                    [:id :integer :primary-key]
+                                    [:name :unique [:not nil]])))
+
+                 (hsql/format
+                  (h/create-table :exercise :if-not-exists
+                                  (h/with-columns
+                                    [:id :integer :primary-key]
+                                    [:date :integer]
+                                    [:type :integer]
+                                    [[:foreign-key :type] [:references :exercisetypes :id]])))
+
+                 (hsql/format
+                  (h/create-table :sets :if-not-exists
+                                  (h/with-columns
+                                    [:id :integer :primary-key]
+                                    [:reps :integer]
+                                    [:goal-reps :integer]
+                                    [:weight :float]
+                                    [:exercise :integer]
+                                    [[:foreign-key :exercise]
+                                     [:references :exercise :id]])))]]
+        (log/info "Running SQL: " s)
+        (jdbc/execute! c s)))
 
     {:datasource (jdbc/get-datasource (:options b2))
      :get-connection (fn []
@@ -34,7 +54,7 @@
   (log/info "Halted."))
 
 (def system
-  (ig/init config))
+  (ig/init *config*))
 
 (defn get-connection []
   ((get-in system [:db :get-connection])))
@@ -84,22 +104,25 @@
 
 (comment
 
-  (jdbc/execute! db ["INSERT INTO testjson (name, stuff) values('gffgg', json('{\"hei\": 2}'))"])
+  ;; (jdbc/execute! db ["INSERT INTO testjson (name, stuff) values('gffgg', json('{\"hei\": 2}'))"])
 
   (create-exercise-type "knebøy")
   (create-exercise-type "markløft")
-
+  (def db
+    ^:private
+    {:dbtype      "sqlite"
+     :dbname      "db/database.db"
+     :classname   "org.sqlite.JDBC"})
   (sql/query db ["select * from exercisetypes where id=?" 1])
 
   (sql/query db ["select * from exercisetypes inner join exercise on exercise.type"])
 
-  (sql/query db ["select * from exercise"])
+  (jdbc/execute! db ["select * from exercise"])
 
   (jdbc/execute! db ["drop table sets"])
   (jdbc/execute! db ["drop table exercise"])
 
   (jdbc/execute! db "PRAGMA foreign_keys = ON;")
-  (jdbc/query db "PRAGMA foreign_keys")
 
-  ;; (sql/query db [".tables"])
+  (jdbc/execute! db ["SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"])
   (jdbc/db-do-commands db (jdbc/drop-table-ddl :exercisetypes)))
