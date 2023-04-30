@@ -3,6 +3,7 @@
             [next.jdbc.sql :as sql]
             [next.jdbc.result-set :as rs]
             [integrant.core :as ig]
+            [clojure.java.io :as io]
             [taoensso.timbre :as log]))
 
 (def db
@@ -19,9 +20,9 @@
 (defmethod ig/init-key :db [_ b2]
   (let [datasource (jdbc/get-datasource (:options b2))]
     (with-open [c (jdbc/get-connection datasource)]
-      (let [sql-text (slurp "resources/tables.sql")]
+      (let [sql-text (slurp (io/resource "tables.sql"))]
         (log/info "Creating DB tables if they do not exist.")
-        (jdbc/execute! c [sql-text])))
+        (println (jdbc/execute! c [sql-text]))))
 
     {:datasource (jdbc/get-datasource (:options b2))
      :get-connection (fn []
