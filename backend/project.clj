@@ -19,5 +19,6 @@
                     [com.bhauman/figwheel-main "0.2.18"]]}}
   :repl-options {:init-ns certecomp.core}
   :plugins [[lein-cloverage "1.2.4"]]
+  :main certecomp.core
   :source-paths ["src"]
   :resource-paths ["target" "resources"])

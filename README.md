@@ -10,9 +10,9 @@ At the moment I'm just trying to build an exercise logger with a Clojure backend
 
 ## Usage
 
-Run backend on `localhost:3000`.
+Run backend on `localhost:3000`. Go to `backend` and run `lein run`.
 
-Frontend at http://127.0.0.1:5173/`
+Frontend at http://127.0.0.1:5173/. Run by `yarn dev`.
 
 ## TODO
 

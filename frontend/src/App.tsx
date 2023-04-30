@@ -29,6 +29,7 @@ const ExerciseSet = z.object({
 const Exercise = z.object({
   id: z.number(),
   sets: z.array(ExerciseSet),
+  date: z.number(),
   type: ExerciseType,
 });
 const Exercises = z.array(Exercise);
@@ -67,7 +68,11 @@ async function deleteType(id: string | number) {
     headers: { "content-type": "application/json" },
   });
   if (!res.ok) {
-    throw new Error("failure");
+    res.json().then(
+      (r) => console.error("Error deleting type.", r),
+      (err) => console.log("Error reading error response. ", err)
+    );
+    throw new Error("Failure.");
   }
 }
 
@@ -146,7 +151,8 @@ function ExercisesList() {
     <ul>
       {(exercises || []).map((ex) => (
         <li key={ex.id}>
-          {ex.id}. Type: {ex.type.name}. Sets: {ex.sets.length}
+          {ex.id}. Type: {ex.type.name}. Sets: {ex.sets.length}. Date:{" "}
+          {new Date(ex.date * 1000).toLocaleString()}
         </li>
       ))}
     </ul>

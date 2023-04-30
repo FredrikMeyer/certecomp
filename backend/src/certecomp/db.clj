@@ -2,11 +2,12 @@
   (:require [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
             [next.jdbc.result-set :as rs]
-            [integrant.core :as ig]))
+            [integrant.core :as ig]
+            [taoensso.timbre :as log]))
 
 (def db
   ^:private
-  {:dbtype "sqlite"
+  {:dbtype      "sqlite"
    :dbname      "db/database.db"
    :classname   "org.sqlite.JDBC"})
 
@@ -18,12 +19,9 @@
 (defmethod ig/init-key :db [_ b2]
   (let [datasource (jdbc/get-datasource (:options b2))]
     (with-open [c (jdbc/get-connection datasource)]
-      (jdbc/execute! c ["PRAGMA foreign_keys = ON"])
-      (jdbc/execute! c ["CREATE TABLE if not exists exercisetypes (id integer primary key, name unique not null)"])
-      (jdbc/execute! c
-                     ["CREATE TABLE if not exists exercise (id integer primary key, date integer, type integer, foreign key(type) references exercisetypes(id)) "])
-      (jdbc/execute! c [(str "CREATE TABLE if not exists sets" " "
-                             "(id integer primary key, reps integer, goal_reps integer, weight float, exercise integer, foreign key(exercise) references exercise(id))")]))
+      (let [sql-text (slurp "resources/tables.sql")]
+        (log/info "Creating DB tables if they do not exist.")
+        (jdbc/execute! c [sql-text])))
 
     {:datasource (jdbc/get-datasource (:options b2))
      :get-connection (fn []
@@ -32,7 +30,7 @@
                          c))}))
 
 (defmethod ig/halt-key! :db [_ b2]
-  (println "Halted" b2))
+  (log/info "Halted."))
 
 (def system
   (ig/init config))
@@ -43,13 +41,12 @@
 (comment
   (ig/halt! system))
 
-(defn get-current-time []
-  (let [now (. java.time.Instant now)]
-    (.getEpochSecond now)))
-
 (defn create-set [exercise-id reps goal-reps weight]
-  (with-open [c (get-connection)]
-    (sql/insert! c "sets" {:exercise exercise-id :reps reps :goal-reps goal-reps :weight weight} jdbc/snake-kebab-opts)))
+  (let [res  (with-open [c (get-connection)]
+               (sql/insert! c "sets"
+                            {:exercise exercise-id :reps reps :goal-reps goal-reps :weight weight}
+                            jdbc/snake-kebab-opts))]
+    (-> res vals first)))
 
 (defn list-sets [exercise-id]
   (with-open [c (get-connection)]
@@ -59,22 +56,20 @@
 (defn create-exercise-type [name]
   (let [result (with-open [c (get-connection)]
                  (sql/insert! c "exercisetypes" {:name name}))]
-    
-    ))
+    (-> result vals first)))
 
 (defn delete-exercise-type [id]
   (with-open [c (get-connection)]
-    (sql/delete! c "exercisetypes" {:id id}))
-  )
+    (sql/delete! c "exercisetypes" {:id id})))
 
 (defn get-exercise-types []
   (with-open [c (get-connection)]
     (let [res (sql/query c ["SELECT * FROM exercisetypes"])]
       (map (fn [r] {:id (:exercisetypes/id r) :name (:exercisetypes/name r)}) res))))
 
-(defn create-exercise [type]
+(defn create-exercise [type date]
   (with-open [c (get-connection)]
-    (sql/insert! c "exercise" {:type type :date (get-current-time)})))
+    (sql/insert! c "exercise" {:type type :date date})))
 
 (defn get-exercises []
   (with-open [c (get-connection)]
@@ -86,8 +81,6 @@
                 :name (:exercisetypes/name exercise)}
          :sets (list-sets (:exercise/id exercise))}))))
 
-;; (try (create-exercise-type "knebøy") (catch Exception e (.toString (.getResultCode e))))
-
 (comment
 
   (jdbc/execute! db ["INSERT INTO testjson (name, stuff) values('gffgg', json('{\"hei\": 2}'))"])
@@ -97,9 +90,9 @@
 
   (sql/query db ["select * from exercisetypes where id=?" 1])
 
-    (sql/query db ["select * from exercisetypes inner join exercise on exercise.type"])
+  (sql/query db ["select * from exercisetypes inner join exercise on exercise.type"])
 
-        (sql/query db ["select * from exercise"])
+  (sql/query db ["select * from exercise"])
 
   (jdbc/execute! db ["drop table sets"])
   (jdbc/execute! db ["drop table exercise"])
@@ -108,5 +101,4 @@
   (jdbc/query db "PRAGMA foreign_keys")
 
   ;; (sql/query db [".tables"])
-
   (jdbc/db-do-commands db (jdbc/drop-table-ddl :exercisetypes)))
