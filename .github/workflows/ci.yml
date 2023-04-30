@@ -1,0 +1,33 @@
+name: Build and test Clojure
+
+on: [push]
+
+jobs:
+
+  clojure:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu'
+          java-version: '11.0.10'
+
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@5.0
+        with:
+          cli: 1.11.1.1155  # Clojure CLI based on tools.deps
+          lein: 2.9.10     # Leiningen
+      - name: Run tests
+        run: |
+          cd backend
+          lein test
+          lein cloverage --codecov
+      - name: Upload to Codecov (Action)
+        uses: codecov/codecov-action@v3
+        with:
+          file: backend/target/coverage/codecov.json
