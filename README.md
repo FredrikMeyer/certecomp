@@ -21,6 +21,8 @@ Frontend at http://127.0.0.1:5173/. Run by `yarn dev`.
 
 ### Look at
 
+https://github.com/magnars/parens-of-the-dead-s2/blob/main/src/undead/system.clj
+
 clojure jdbc
 https://clojure-doc.org/articles/ecosystem/java_jdbc/using_sql/
 
@@ -68,7 +70,7 @@ https://yobriefca.se/blog/2014/04/29/managing-environment-variables-in-clojure/
 ## License
 
 
-Copyright © 2023 FIXME
+Copyright © 2023 Fredrik Meyer
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at

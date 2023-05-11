@@ -1,19 +1,30 @@
 (ns certecomp.core-test
   (:require
    [certecomp.core :as core]
+   [certecomp.api :as api]
+   [certecomp.system :as system]
    [clojure.data.json :as json]
-   [clojure.test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [ring.mock.request :as request]))
+
+(defn db-fixture [f] (system/start-system!)
+  (f)
+  (system/halt-system!))
+
+(use-fixtures :once db-fixture)
 
 (deftest first-test
   (testing "main route"
     (println (request/request :GET "/"))
-    (let [response (core/app (request/request :get "/api/types"))]
+    (let [handler (:app/handler @system/system)
+          response (handler (request/request :get "/api/types"))]
       (is (= 200 (:status response))))))
 
 (deftest get-exercises
-  (testing "exerciss"
-    (let [resp (core/app (request/request :get "/api/exercise"))
+  (testing "exercises"
+    (let [handler (:app/handler @system/system)
+          resp (handler (request/request :get "/api/exercise"))
           body  (slurp (:body resp))
           asjson (json/read-str body)]
       (println body)
@@ -21,18 +32,19 @@
       (is (vector? asjson)))))
 
 (deftest create-delete-type
-  (let [name (str (random-uuid))]
+  (let [name (str (random-uuid))
+        handler (:app/handler @system/system)]
     (testing "create-delete-type"
       (do
         ;; Create a type
-        (let [resp (core/app (->
-                              (request/request :post "/api/types")
-                              (request/json-body {:name name})))]
+        (let [resp (handler (->
+                             (request/request :post "/api/types")
+                             (request/json-body {:name name})))]
           (println resp)
           (is (vector? [])))
         ;; Get it
-        (let [resp (core/app (->
-                              (request/request :get "/api/types")))
+        (let [resp (handler (->
+                             (request/request :get "/api/types")))
               response-read (-> resp :body slurp json/read-str)
               filtered (filter (fn [t] (= (get t "name") name)) response-read)]
           (println response-read)
@@ -40,12 +52,12 @@
 
           (let [type-id (get (first filtered) "id")]
             ;; Delete it
-            (let [resp (core/app (->
-                                  (request/request :delete (str "/api/types/" type-id))))]
+            (let [resp (handler (->
+                                 (request/request :delete (str "/api/types/" type-id))))]
               (println resp)
               (is (= 200 (:status resp))))
-            (let [resp (core/app (->
-                                  (request/request :get "/api/types")))
+            (let [resp (handler (->
+                                 (request/request :get "/api/types")))
                   response-read (-> resp :body slurp json/read-str)
                   filtered (filter (fn [t] (= (get t "name") name)) response-read)]
               (println resp)
