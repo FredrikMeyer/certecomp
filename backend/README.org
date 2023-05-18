@@ -1,7 +1,7 @@
 
 * Data Model
 
-#+begin_src plantuml :file data_model.png
+#+begin_src plantuml :file data_model.png :exports both
 
 !define Table(name) class name as "name" << (T,#FFAAAA) >>
 !define primary_key(x) <b><&key> <u>x</u></b>
