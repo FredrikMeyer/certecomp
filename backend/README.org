@@ -1,4 +1,21 @@
 
+* Backend
+
+Have implemented (most) CRUD REST API endpoints, but probably should have some more specialized ones to avoid a lot of logic on the frontend.
+
+Two main tasks:
+ - Start an exercise and register exercises.
+
+   Idea of flow: "start session with exercise X".
+
+   For every set, register the repetitions.
+   
+ - Look at graphs of progress.
+
+Features?
+
+ - Suggest weight next time based on how long ago + if success last time.
+
 * Data Model
 
 #+begin_src plantuml :file data_model.png :exports both
