@@ -1,10 +1,7 @@
 (ns certecomp.core-test
   (:require
-   [certecomp.core :as core]
-   [certecomp.api :as api]
    [certecomp.system :as system]
    [clojure.data.json :as json]
-   [integrant.core :as ig]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [ring.mock.request :as request]))
 
@@ -18,7 +15,7 @@
   (testing "main route"
     (println (request/request :GET "/"))
     (let [handler (:app/handler @system/system)
-          response (handler (request/request :get "/api/types"))]
+          response (handler (request/request :get "/api/exercise"))]
       (is (= 200 (:status response))))))
 
 (deftest get-exercises
@@ -34,17 +31,17 @@
 (deftest create-delete-type
   (let [name (str (random-uuid))
         handler (:app/handler @system/system)]
-    (testing "create-delete-type"
+    (testing "create-delete-exercise-type"
       (do
-        ;; Create a type
+        ;; Create a new exercise
         (let [resp (handler (->
-                             (request/request :post "/api/types")
-                             (request/json-body {:name name})))]
+                             (request/request :post "/api/exercise")
+                             (request/json-body {:name name :description "" :goal-reps 5 :goal-number-of-sets 5})))]
           (println resp)
           (is (vector? [])))
-        ;; Get it
+        ;; Get it back
         (let [resp (handler (->
-                             (request/request :get "/api/types")))
+                             (request/request :get "/api/exercise")))
               response-read (-> resp :body slurp json/read-str)
               filtered (filter (fn [t] (= (get t "name") name)) response-read)]
           (println response-read)
@@ -53,11 +50,11 @@
           (let [type-id (get (first filtered) "id")]
             ;; Delete it
             (let [resp (handler (->
-                                 (request/request :delete (str "/api/types/" type-id))))]
+                                 (request/request :delete (str "/api/exercise/" type-id))))]
               (println resp)
               (is (= 200 (:status resp))))
             (let [resp (handler (->
-                                 (request/request :get "/api/types")))
+                                 (request/request :get "/api/exercise")))
                   response-read (-> resp :body slurp json/read-str)
                   filtered (filter (fn [t] (= (get t "name") name)) response-read)]
               (println resp)

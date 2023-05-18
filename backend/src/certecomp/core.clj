@@ -6,5 +6,8 @@
   (system/start-system!))
 
 (comment
-  (system/halt-system!)
-  (system/start-system!))
+  (do
+    (system/halt-system!)
+    (system/start-system!))
+  ;;
+  )

@@ -16,7 +16,9 @@
    [taoensso.timbre :as timbre :refer [error]]))
 
 (s/def ::exercise-id int?)
-(s/def ::get-set-path-params (s/keys :req-un [::exercise-id]))
+(s/def ::session-id int?)
+(s/def ::workout-id (s/and int? (comp not neg-int?)))
+(s/def ::workout-id-param (s/keys :req-un [::workout-id]))
 
 (s/def ::id int?)
 (s/def ::delete-type-params (s/keys :req-un [::id]))
@@ -24,9 +26,27 @@
 (s/def ::float-or-int (s/or :float float? :int int?))
 (s/def ::date int?)
 (s/def ::name string?)
-(s/def ::exercise-type (s/keys :req [::id ::name]))
+(s/def ::description string?)
+(s/def ::reps (s/and int? pos?))
+(s/def ::goal-reps (s/and int? pos?))
+(s/def ::goal-number-of-sets int?)
+(s/def ::exercise-type (s/keys :req-un [::id ::name]))
 
-(s/def ::exercise (s/keys :req [::id ::date]))
+(s/def ::exercise (s/keys :req-un [::id ::name ::description ::goal-reps ::goal-number-of-sets]))
+(s/def ::new-exercise (s/keys :req-un [::name] :opt-un [::description ::goal-reps ::goal-number-of-sets]))
+
+(s/def ::place string?)
+(s/def ::shape string?)
+(s/def ::session (s/keys :req-un [::id ::date ::place ::shape]))
+(s/def ::new-session (s/keys :req-un [::date ::place ::shape]))
+(s/def ::shape string?)
+(s/def ::workout (s/keys :req-un [::date] :opt-un [::place ::shape]))
+
+(s/def ::weight (s/and float? pos?))
+(s/def ::set (s/keys :req-un [::id ::reps ::weight ::workout-id]))
+
+(s/def ::new-workout (s/keys :req-un [::session-id ::exercise-id]))
+(s/def ::workout (s/keys :req-un [::id ::session-id ::exercise-id]))
 
 (def exception-middleware
   (exception/create-exception-middleware
@@ -41,68 +61,82 @@
                 [""
                  ["/docs/*" {:no-doc true
                              :get (swagger-ui/create-swagger-ui-handler {:url "/api/swagger.json"})}]
-                 ["/swagger.json" {:get (swagger/create-swagger-handler)}]]
-                ["/types"
-                 {:swagger {:tags ["types"]}}
+                 ["/swagger.json" {:no-doc true
+                                   :get (swagger/create-swagger-handler)}]]
+                ["/exercise"
+                 {:swagger {:tags ["exercise"]}}
                  ["" {:get {:summary "List exercise types."
+                            :responses {200 {:body (s/coll-of ::exercise)}}
                             :handler (fn [_]
-                                       (resp/response (db/get-exercise-types db)))}
+                                       (resp/response (db/get-exercises db)))}
                       :post {:summary "Create a new exercise type."
-                             :parameters {:body {:name ::string}}
+                             :parameters {:body ::new-exercise}
                              :handler (fn [{:keys [body-params]}]
                                         (println body-params)
-                                        (let [name (:name body-params)
-                                              res (db/create-exercise-type db name)]
+                                        (let [res (db/create-exercise db body-params)]
                                           (resp/response res)))}}]
                  ["/:id" {:parameters {:path ::delete-type-params}
                           :delete {:summary "Delete an exercise type."
                                    :handler (fn [{path-params :path-params}]
-                                              (println "hei" path-params)
+                                              (t/info "Deleting. Params: " path-params)
                                               (let [id (:id path-params)]
-                                                (db/delete-exercise-type db id))
-                                              (resp/response "ok"))}}]]
+                                                (db/delete-exercise db id))
+                                              (resp/status 200))}}]]
+                ["/session"
+                 {:swagger {:tags ["session"]}}
+                 ["" {:get {:summary "List all sessions."
+                            :responses {200 {:body (s/coll-of ::session)}}
+                            :handler (fn [_]
+                                       (let [res (db/get-sessions db)]
+                                         (resp/response res)))}
+                      :post {:summary "Register a new session."
+                             :parameters {:body ::new-session}
+                             :handler (fn [{:keys [body-params]}]
+                                        (let [resp (db/create-session db body-params)]
+                                          (resp/status 200)))}}]]
+
                 ["/set"
                  {:swagger {:tags ["set"]}}
                  ["" {:post {:summary "Create a new set."
-                             :parameters {:body {:exercise-id ::exercise-id
+                             :parameters {:body {:workout-id ::workout-id
                                                  :reps int?
-                                                 :reps-goal int?
                                                  :weight ::float-or-int}}
                              :handler (fn [{:keys [body-params]}]
-                                        (println body-params)
+                                        (t/info "Creating new set. Body params:" body-params)
                                         (let [reps (:reps body-params)
-                                              reps-goal (:reps-goal body-params)
-                                              exercise-id (:exercise-id body-params)
+                                              workout-id (:workout-id body-params)
                                               weight (:weight body-params)]
-                                          (-> (db/create-set db exercise-id reps reps-goal weight)
-                                              resp/response)))}
-                      :get {:handler (fn [r] (resp/response "jadda"))}}]
-                 ["/:exercise-id" {:parameters {:path ::get-set-path-params}
-                                   :summary "Get sets by exercise ID."
-                                   :get {:handler (fn [{path-params :path-params}]
-                                                    (let [exercise-id (:exercise-id path-params)]
-                                                      (resp/response (db/list-sets db exercise-id))))}}]]
-                ["/exercise" {:swagger {:tags ["exercises"]}
-                              :get {:summary "Get all registered exercises."
-                                    ;; :responses {200 {:body ::exercise}}
-                                    :handler (fn [request]
-                                               (resp/response (db/get-exercises db)))}
-                              :post {:summary "Register a new exercise."
-                                     :parameters {:body {:type ::id :date ::date}}
-                                     :handler (fn [{:keys [body-params]}]
-                                                (let [type (:type body-params)
-                                                      date (:date body-params)]
-                                                  (db/create-exercise db type date)
-                                                  (resp/response {:msg "Created exercise."})))}}]]
+                                          (-> (db/create-set db workout-id reps weight)
+                                              resp/response)))}}]
+                 ["/:workout-id" {:parameters {:path ::workout-id-param}
+                                  :summary "Get sets by workout ID."
+                                  :responses {200 {:body ::set}}
+                                  :get {:handler (fn [{path-params :path-params}]
+                                                   (let [workout-id (:workout-id path-params)]
+                                                     (resp/response (db/list-sets db workout-id))))}}]]
+                ["/workout" {:swagger {:tags ["workout"]}
+                             :get {:summary "Get all registered workouts."
+                                   :responses {200 {:body ::workout}}
+                                   :handler (fn [_]
+                                              (resp/response (db/get-workouts db)))}
+                             :post {:summary "Register a new workout."
+                                    :parameters {:body ::new-workout}
+                                    :handler (fn [{:keys [body-params]}]
+                                               (db/create-workout db body-params)
+                                               (resp/response {:msg "Registered workout."}))}}]]
 
                {:data {:muuntaja (m/create
-                                  (assoc-in m/default-options
-                                            [:formats "application/json" :encoder-opts]
-                                            {:encode-key-fn csk/->camelCaseString}))
+                                  (-> m/default-options
+                                      ;; (assoc-in [:formats "application/json" :encoder-opts]
+                                      ;;           {:encode-key-fn csk/->camelCaseString})
+                                      ))
+
                        :coercion reitit.coercion.spec/coercion
-                       :middleware [rrmm/format-middleware
+                       :middleware [rrmm/format-middleware ;; content negotiation
                                     exception-middleware
+                                    ;; coercing response bodys
                                     rrc/coerce-response-middleware
+                                    ;; coercing request parameters
                                     rrc/coerce-request-middleware]}}))
 
 (defn app [db-config]

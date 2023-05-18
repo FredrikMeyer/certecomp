@@ -1,0 +1,52 @@
+
+* Data Model
+
+#+begin_src plantuml :file data_model.png
+
+!define Table(name) class name as "name" << (T,#FFAAAA) >>
+!define primary_key(x) <b><&key> <u>x</u></b>
+!define foreign_key(x, table, field) <u>x</u> <&key><b>table.field</b>
+
+
+skinparam class {
+    BackgroundColor #EAEAEA
+    BorderColor #AAAAAA
+}
+
+
+Table(session) {
+  primary_key(session_id) int
+  date int
+  place str
+  shape str
+}
+
+Table(exercise) {
+  primary_key(exercise_id) int
+  name str
+  description str
+  goal_reps int
+  goal_number_of_sets int
+}
+
+Table(workout) {
+  primary_key(workout_id) int
+  foreign_key(session_id, session, session_id)
+  foreign_key(exercise_id, exercise, exercise_id)
+}
+
+Table(set) {
+  primary_key(set_id) int
+  reps int
+  weight float
+  foreign_key(workout_id, workout, workout_id)
+}
+
+workout }o--|| exercise
+workout }|--|| set
+
+session  }|--|| workout
+#+end_src
+
+#+RESULTS:
+[[file:data_model.png]]

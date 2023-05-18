@@ -13,77 +13,124 @@
       (log/info "Creating DB tables if they do not exist.")
 
       (jdbc/execute! c ["PRAGMA foreign_keys = ON"])
-      (doseq [s [(hsql/format
-                  (h/create-table :exercisetypes :if-not-exists
-                                  (h/with-columns
-                                    [:id :integer :primary-key]
-                                    [:name :unique [:not nil]])))
+      (doseq [s [(h/create-table :exercise :if-not-exists
+                                 (h/with-columns
+                                   [:id :integer :primary-key]
+                                   [:name  :str [:not nil]]
+                                   [:description :str]
+                                   [:goal-reps :integer]
+                                   [:goal-number-of-sets :integer]))
 
-                 (hsql/format
-                  (h/create-table :exercise :if-not-exists
-                                  (h/with-columns
-                                    [:id :integer :primary-key]
-                                    [:date :integer]
-                                    [:type :integer]
-                                    [[:foreign-key :type] [:references :exercisetypes :id]])))
+                 (h/create-table :session :if-not-exists
+                                 (h/with-columns
+                                   [:id :integer :primary-key]
+                                   [:date :int]
+                                   [:place :str]
+                                   [:shape :str]))
 
-                 (hsql/format
-                  (h/create-table :sets :if-not-exists
-                                  (h/with-columns
-                                    [:id :integer :primary-key]
-                                    [:reps :integer]
-                                    [:goal-reps :integer]
-                                    [:weight :float]
-                                    [:exercise :integer]
-                                    [[:foreign-key :exercise]
-                                     [:references :exercise :id]])))]]
+                 (h/create-table :workout :if-not-exists
+                                 (h/with-columns
+                                   [:id :integer :primary-key]
+                                   [:exercise-id :int]
+                                   [:session-id :int]
+                                   [[:foreign-key :exercise-id] [:references :exercise :id]]
+                                   [[:foreign-key :session-id] [:references :session :id]]))
+
+                 (h/create-table :sets :if-not-exists
+                                 (h/with-columns
+                                   [:id :integer :primary-key]
+                                   [:reps :int [:not nil]]
+                                   [:weight :float]
+                                   [:workout-id :int]
+                                   [[:foreign-key :workout-id] [:references :workout :id]]))]]
+
         (log/info "Running SQL: " s)
-        (jdbc/execute! c s)))
+        (jdbc/execute! c (hsql/format s))))
 
     {:get-connection (fn []
                        (let [c (jdbc/get-connection datasource)]
                          (jdbc/execute! c ["PRAGMA foreign_keys = ON"])
                          c))}))
 
-(defn create-set [{:keys [get-connection]} exercise-id reps goal-reps weight]
+(defn create-set [{:keys [get-connection]} workout-id reps weight]
   (let [res (with-open [c (get-connection)]
-              (sql/insert! c "sets"
-                           {:exercise exercise-id :reps reps :goal-reps goal-reps :weight weight}
-                           jdbc/snake-kebab-opts))]
+              (jdbc/execute! c (-> (h/insert-into :set)
+                                   (h/columns :reps :weight :workout-id)
+                                   (h/values [[reps weight workout-id]])
+                                   hsql/format)
+                             jdbc/snake-kebab-opts))]
     (-> res vals first)))
 
-(defn list-sets [{:keys [get-connection]} exercise-id]
+(defn list-sets [{:keys [get-connection]} workout-id]
   (with-open [c (get-connection)]
+
     (map (fn [set] {:reps (:sets/reps set) :goal-reps (:sets/goal_reps set) :weight (:sets/weight set)})
-         (sql/query c ["select * from sets where exercise=?" exercise-id]))))
+         (jdbc/execute! c (-> (h/select :*)
+                              (h/from :sets)
+                              (h/where [:= :workout-id workout-id])
+                              hsql/format)))))
 
-(defn create-exercise-type [{:keys [get-connection]} name]
+(defn delete-set [{:keys [get-connection]} id]
+  (with-open [c (get-connection)]
+    (jdbc/execute! c (-> (h/delete-from :sets)
+                         (h/where [:= :id id])
+                         hsql/format))))
+
+(defn create-exercise [{:keys [get-connection]}
+                       {:keys [name description goal-reps goal-number-of-sets]}]
   (let [result (with-open [c (get-connection)]
-                 (sql/insert! c "exercisetypes" {:name name}))]
-    (-> result vals first)))
+                 (log/info "Inserting values name description goal-reps goal-number-of-sets." name description goal-reps goal-number-of-sets)
+                 (jdbc/execute! c (-> (h/insert-into :exercise)
+                                      (h/columns :name :description :goal-reps :goal-number-of-sets)
+                                      (h/values [[name description goal-reps goal-number-of-sets]])
+                                      hsql/format)
+                                jdbc/snake-kebab-opts))]
+    result))
 
-(defn delete-exercise-type [{:keys [get-connection]} id]
+(defn delete-exercise [{:keys [get-connection]} id]
   (with-open [c (get-connection)]
-    (sql/delete! c "exercisetypes" {:id id})))
+    (jdbc/execute! c (-> (h/delete-from :exercise)
+                         (h/where [:= :id id])
+                         hsql/format))))
 
-(defn get-exercise-types [{:keys [get-connection]}]
+(defn get-exercises [{:keys [get-connection]}]
   (with-open [c (get-connection)]
-    (let [res (sql/query c ["SELECT * FROM exercisetypes"])]
-      (map (fn [r] {:id (:exercisetypes/id r) :name (:exercisetypes/name r)}) res))))
+    (->> (-> (h/select :*)
+             (h/from :exercise)
+             hsql/format)
+         ((fn [q] (jdbc/execute! c q jdbc/snake-kebab-opts)))
+         (map (fn [r]
+                (update-keys r (fn [k] (-> k name keyword))))))))
 
-(defn create-exercise [{:keys [get-connection]} type date]
+(defn create-session [{:keys [get-connection]} {:keys [date place shape]}]
   (with-open [c (get-connection)]
-    (sql/insert! c "exercise" {:type type :date date})))
+    (jdbc/execute! c (-> (h/insert-into :session)
+                         (h/columns :date :place :shape)
+                         (h/values [[date place shape]])
+                         hsql/format))))
 
-(defn get-exercises [{:keys [get-connection] :as db}]
+(defn get-sessions [{:keys [get-connection]}]
   (with-open [c (get-connection)]
-    (let [exercises (sql/query c ["select * from exercise inner join exercisetypes on exercise.type=exercisetypes.id"])]
-      (for [exercise exercises]
-        {:id (:exercise/id exercise)
-         :date (:exercise/date exercise)
-         :type {:id (:exercise/type exercise)
-                :name (:exercisetypes/name exercise)}
-         :sets (list-sets db (:exercise/id exercise))}))))
+    (->> (-> (h/select :*)
+             (h/from :session)
+             hsql/format)
+         (jdbc/execute! c)
+         (map (fn [r] (update-keys r (fn [k] (-> k name keyword))))))))
+
+(defn create-workout [{:keys [get-connection]} {:keys [session-id exercise-id]}]
+  (with-open [c (get-connection)]
+    (jdbc/execute! c (-> (h/insert-into :workout)
+                         (h/columns :session-id :exercise-id)
+                         (h/values [[session-id exercise-id]])
+                         hsql/format))))
+
+(defn get-workouts [{:keys [get-connection]}]
+  (with-open [c (get-connection)]
+    (let [query (-> (h/select :*)
+                    (h/from :workout)
+                    (hsql/format))]
+      (map (fn [r] (update-keys r (fn [k] (-> k name keyword))))
+           (jdbc/execute! c query jdbc/snake-kebab-opts)))))
 
 (comment
 
@@ -91,11 +138,13 @@
 
   ;; (create-exercise-type "knebøy")
   ;; (create-exercise-type "markløft")
-  (def db
-    ^:private
-    {:dbtype      "sqlite"
-     :dbname      "db/database.db"
-     :classname   "org.sqlite.JDBC"})
+
+  (defn get-connection []
+    (jdbc/get-connection
+
+     {:dbtype      "sqlite"
+      :dbname      "db/database.db"
+      :classname   "org.sqlite.JDBC"}))
   (sql/query db ["select * from exercisetypes where id=?" 1])
 
   (sql/query db ["select * from exercisetypes inner join exercise on exercise.type"])
