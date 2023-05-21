@@ -1,6 +1,7 @@
 (ns certecomp.db
   (:require [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
+            [next.jdbc.result-set :as rs]
             [integrant.core :as ig]
             [taoensso.timbre :as log]
             [honey.sql :as hsql]
@@ -34,7 +35,7 @@
                                    [:exercise-id :int]
                                    [:session-id :int]
                                    [[:foreign-key :exercise-id] [:references :exercise :id]]
-                                   [[:foreign-key :session-id] [:references :session :id]]))
+                                   [[:foreign-key :session-id] [:references :session :id] :on-delete :cascade]))
 
                  (h/create-table :sets :if-not-exists
                                  (h/with-columns
@@ -42,7 +43,7 @@
                                    [:reps :int [:not nil]]
                                    [:weight :float]
                                    [:workout-id :int]
-                                   [[:foreign-key :workout-id] [:references :workout :id]]))]]
+                                   [[:foreign-key :workout-id] [:references :workout :id] :on-delete :cascade]))]]
 
         (log/info "Running SQL: " s)
         (jdbc/execute! c (hsql/format s))))
@@ -52,14 +53,18 @@
                          (jdbc/execute! c ["PRAGMA foreign_keys = ON"])
                          c))}))
 
-(defn create-set [{:keys [get-connection]} workout-id reps weight]
+(def jdbc-opts (-> {}
+                   (merge jdbc/snake-kebab-opts)
+                   (assoc :return-keys {:return-keys true})))
+
+(defn create-set [{:keys [get-connection]} {:keys [workout-id reps weight]}]
   (let [res (with-open [c (get-connection)]
-              (jdbc/execute! c (-> (h/insert-into :set)
+              (jdbc/execute! c (-> (h/insert-into :sets)
                                    (h/columns :reps :weight :workout-id)
                                    (h/values [[reps weight workout-id]])
                                    hsql/format)
-                             jdbc/snake-kebab-opts))]
-    (-> res vals first)))
+                             jdbc-opts))]
+    res))
 
 (defn list-sets [{:keys [get-connection]} workout-id]
   (with-open [c (get-connection)]
@@ -68,7 +73,7 @@
          (jdbc/execute! c (-> (h/select :*)
                               (h/from :sets)
                               (h/where [:= :workout-id workout-id])
-                              hsql/format)))))
+                              hsql/format) jdbc-opts))))
 
 (defn delete-set [{:keys [get-connection]} id]
   (with-open [c (get-connection)]
@@ -84,21 +89,21 @@
                                       (h/columns :name :description :goal-reps :goal-number-of-sets)
                                       (h/values [[name description goal-reps goal-number-of-sets]])
                                       hsql/format)
-                                jdbc/snake-kebab-opts))]
+                                jdbc-opts))]
     result))
 
 (defn delete-exercise [{:keys [get-connection]} id]
   (with-open [c (get-connection)]
     (jdbc/execute! c (-> (h/delete-from :exercise)
                          (h/where [:= :id id])
-                         hsql/format))))
+                         hsql/format) jdbc-opts)))
 
 (defn get-exercises [{:keys [get-connection]}]
   (with-open [c (get-connection)]
     (->> (-> (h/select :*)
              (h/from :exercise)
              hsql/format)
-         ((fn [q] (jdbc/execute! c q jdbc/snake-kebab-opts)))
+         ((fn [q] (jdbc/execute! c q jdbc-opts)))
          (map (fn [r]
                 (update-keys r (fn [k] (-> k name keyword))))))))
 
@@ -107,22 +112,30 @@
     (jdbc/execute! c (-> (h/insert-into :session)
                          (h/columns :date :place :shape)
                          (h/values [[date place shape]])
-                         hsql/format))))
+                         hsql/format) jdbc-opts)))
 
 (defn get-sessions [{:keys [get-connection]}]
   (with-open [c (get-connection)]
     (->> (-> (h/select :*)
              (h/from :session)
              hsql/format)
-         (jdbc/execute! c)
+         (jdbc/execute! c jdbc-opts)
          (map (fn [r] (update-keys r (fn [k] (-> k name keyword))))))))
+
+(defn delete-session [{:keys [get-connection]} {:keys [session-id]}]
+  (with-open [c (get-connection)]
+    (jdbc/execute! c (-> (h/delete-from :session)
+                         (h/where [:= :id session-id])
+                         hsql/format) jdbc-opts)))
 
 (defn create-workout [{:keys [get-connection]} {:keys [session-id exercise-id]}]
   (with-open [c (get-connection)]
-    (jdbc/execute! c (-> (h/insert-into :workout)
-                         (h/columns :session-id :exercise-id)
-                         (h/values [[session-id exercise-id]])
-                         hsql/format))))
+    (let [res (jdbc/execute! c (-> (h/insert-into :workout)
+                                   (h/columns :session-id :exercise-id)
+                                   (h/values [[session-id exercise-id]])
+                                   hsql/format)
+                             jdbc-opts)]
+      res)))
 
 (defn get-workouts [{:keys [get-connection]}]
   (with-open [c (get-connection)]
@@ -130,31 +143,28 @@
                     (h/from :workout)
                     (hsql/format))]
       (map (fn [r] (update-keys r (fn [k] (-> k name keyword))))
-           (jdbc/execute! c query jdbc/snake-kebab-opts)))))
+           (jdbc/execute! c query jdbc-opts)))))
 
 (comment
-
-  ;; (jdbc/execute! db ["INSERT INTO testjson (name, stuff) values('gffgg', json('{\"hei\": 2}'))"])
-
-  ;; (create-exercise-type "knebøy")
-  ;; (create-exercise-type "markløft")
-
   (defn get-connection []
     (jdbc/get-connection
 
      {:dbtype      "sqlite"
       :dbname      "db/database.db"
       :classname   "org.sqlite.JDBC"}))
-  (sql/query db ["select * from exercisetypes where id=?" 1])
 
-  (sql/query db ["select * from exercisetypes inner join exercise on exercise.type"])
+  (require '[certecomp.utils :as u])
+  (let [c (fn [] (get-connection))
+        db {:get-connection c}]
+    (create-session db {:date (u/get-current-time) :place "Myrens" :shape "ok"}))
+  (let [c (fn [] (get-connection))
+        db {:get-connection c}]
+    ;; (create-session db {:date (u/get-current-time) :place "Myrens" :shape "good"})
+    (create-workout db {:session-id 4 :exercise-id 2}))
+    (let [c (fn [] (get-connection))
+        db {:get-connection c}]
+      (create-set db {:workout-id 1 :reps 5 :weight 50}))
 
-  (jdbc/execute! db ["select * from exercise"])
-
-  (jdbc/execute! db ["drop table sets"])
-  (jdbc/execute! db ["drop table exercise"])
-
-  (jdbc/execute! db "PRAGMA foreign_keys = ON;")
-
-  (jdbc/execute! db ["SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"])
-  (jdbc/db-do-commands db (jdbc/drop-table-ddl :exercisetypes)))
+      (let [c (fn [] (get-connection))
+        db {:get-connection c}]
+        (get-workouts db)))

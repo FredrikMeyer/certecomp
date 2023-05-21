@@ -103,11 +103,8 @@
                                                  :weight ::float-or-int}}
                              :handler (fn [{:keys [body-params]}]
                                         (t/info "Creating new set. Body params:" body-params)
-                                        (let [reps (:reps body-params)
-                                              workout-id (:workout-id body-params)
-                                              weight (:weight body-params)]
-                                          (-> (db/create-set db workout-id reps weight)
-                                              resp/response)))}}]
+                                        (-> (db/create-set db body-params)
+                                            resp/response))}}]
                  ["/:workout-id" {:parameters {:path ::workout-id-param}
                                   :summary "Get sets by workout ID."
                                   :responses {200 {:body ::set}}
@@ -116,7 +113,7 @@
                                                      (resp/response (db/list-sets db workout-id))))}}]]
                 ["/workout" {:swagger {:tags ["workout"]}
                              :get {:summary "Get all registered workouts."
-                                   :responses {200 {:body ::workout}}
+                                   :responses {200 {:body (s/coll-of ::workout)}}
                                    :handler (fn [_]
                                               (resp/response (db/get-workouts db)))}
                              :post {:summary "Register a new workout."
