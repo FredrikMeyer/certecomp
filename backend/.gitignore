@@ -2,3 +2,5 @@
 /classes
 .lein-failures
 /.clj-kondo
+/node_modules
+/.shadow-cljs
