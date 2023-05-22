@@ -21,5 +21,5 @@
   :repl-options {:init-ns certecomp.core}
   :plugins [[lein-cloverage "1.2.4"]]
   :main certecomp.core
-  :source-paths ["src"]
+  :source-paths ["src/clj"]
   :resource-paths ["target" "resources"])
