@@ -3,4 +3,4 @@
                       :output-dir "resources/public/js"
                       :asset-path "/js"
                       :modules    {:app {:init-fn certecomp.core/init!}}}}
- :dev-http     {3000 {:root    "resources/public"}}}
+ :dev-http     {3001 {:root    "resources/public"}}}

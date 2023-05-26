@@ -2,15 +2,26 @@
   (:require
    [reagent.core :as reagent :refer [atom]]
    [reagent.dom :as rdom]
+   [goog.object :as gobj]
    [reagent.session :as session]
    [reitit.frontend :as reitit]))
 
+(def state (atom {:exercises []}))
+
 (defn current-page []
+  (js/console.log (:exercises @state))
   (fn []
     [:main
-     [:h1 {:on-click #(js/console.log "hei")} "Hei"]]))
-
-
+     [:h1 {:on-click #(js/console.log "hei")} "Exercises"]
+     [:div {:on-click (fn [] (-> (js/fetch "http://localhost:3000/api/exercise")
+                                 (.then (fn [res] (.json res)))
+                                 (.then (fn [res] (js/console.log res)
+                                          (js/console.log (gobj/get res))
+                                          (swap! state (fn [m] (assoc-in m [:exercises] (js->clj res :keywordize-keys true))))))))}
+      "Fetch all exercises"]
+     [:ul
+      (for [exc (:exercises @state)]
+        [:li {:key (:id exc)} (:name exc)])]]))
 
 ;; -------------------------
 ;; Initialize app

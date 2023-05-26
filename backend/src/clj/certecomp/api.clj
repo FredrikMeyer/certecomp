@@ -145,7 +145,7 @@
   (fn [request]
     (let [response (handler request)]
       (-> response
-          (assoc-in [:headers "Access-Control-Allow-Origin"] "http://127.0.0.1:5173")
+          (assoc-in [:headers "Access-Control-Allow-Origin"] "http://127.0.0.1:3001")
           (assoc-in [:headers "Access-Control-Allow-METHODS"] "GET,POST,DELETE")
           (assoc-in [:headers "Access-Control-Allow-Headers"] "content-type")))))
 
