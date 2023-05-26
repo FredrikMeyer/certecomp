@@ -17,9 +17,16 @@
                  [org.xerial/sqlite-jdbc "3.23.1"]
                  [com.github.seancorfield/honeysql "2.4.1026"]
                  [org.clojure/data.json "2.4.0"] ;; for tests
-                 ]
+                 [reagent "1.1.1"]
+                 [reagent-utils "0.3.4"]]
   :repl-options {:init-ns certecomp.core}
-  :plugins [[lein-cloverage "1.2.4"]]
+  :plugins [[lein-cloverage "1.2.4"]
+            [lein-environ "1.1.0"]]
   :main certecomp.core
-  :source-paths ["src/clj"]
-  :resource-paths ["target" "resources"])
+  :source-paths ["src/clj" "src/cljc" "src/cljs"]
+  :resource-paths ["target" "resources"]
+
+  :profiles {:dev {:dependencies [[thheller/shadow-cljs "2.23.3"]]
+                   :source-paths ["env/dev/clj"]
+                   :env {:dev true}}
+             :shadow-cljs {:dependencies [[com.google.javascript/closure-compiler-unshaded "v20230502"]]}})

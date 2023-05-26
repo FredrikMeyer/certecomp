@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "shadow-cljs": "^2.23.3"
+  },
+  "scripts": {
+    "shadow-cljs": "shadow-cljs"
+  },
+  "dependencies":{
+    "react": "^18.0.2",
+    "react-dom": "^18.0.2"
+  }
+}
