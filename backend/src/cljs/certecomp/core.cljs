@@ -95,5 +95,3 @@
 
 ;; reagent project template
 ;; https://github.com/reagent-project/reagent-template/tree/master/resources/leiningen/new/reagent
-
-;; https://github.com/venantius/accountant

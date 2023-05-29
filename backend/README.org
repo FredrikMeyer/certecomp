@@ -15,6 +15,26 @@ Two main tasks:
 Features?
 
  - Suggest weight next time based on how long ago + if success last time.
+ 
+* Frontend
+
+Clojurescript + Reagent.
+
+Runs on port `127.0.0.1:3001`.
+
+** Todos [0/4]
+
+*** TODO Show stored exercises  
+
+*** TODO Create exercises
+
+*** TODO Create sessions
+
+*** TODO Visualize progress
+
+** Resources
+
+Examle [[https://github.com/reagent-project/reagent/blob/a14faba55e373000f8f93edfcfce0d1222f7e71a/examples/todomvc/src/todomvc/core.cljs][TODO MVC app]].
 
 * Data Model
 
