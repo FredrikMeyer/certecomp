@@ -38,31 +38,41 @@
   (println @state)
   [:div "sessions"
    [:ul (for [sess (:sessions @state)]
-          [:li {:key (:id sess)} (str "Place: " (:place sess) ". Date: " (.toLocaleDateString (-> (* 1000 (:date sess)) js/Date.)))])]])
+          [:li {:key (:id sess)} (str "Place: " (:place sess)
+                                      ". Date: " (.toLocaleDateString (-> (* 1000 (:date sess)) js/Date.)))])]])
+
+(defn exercises []
+  [:div "exercises"
+   [:ul
+    (for [exc (:exercises @state)]
+      [:li {:key (:id exc)}  (:name exc) (str " (goal reps: " (:goal-reps exc) ")")])]])
+
+(defonce page-name (atom {:page-name "exercises"}))
 
 (defn current-page []
   (js/console.log (:exercises @state))
-
-  (let [current-page (atom :exercises)]
-    (fn []
-      [:main
-       [:h1 {:on-click #(js/console.log "hei")} "Exercises"]
-       [:p
-        [:input {:type "button"
-                 :on-click fetch-exercises
-                 :value "Show all exercises"
-                 :style {:margin-right "5px"}}]
-        [:input {:type "button"
-                 :on-click (fn []
-                             (fetch-sessions)
-                             (reset! current-page :sessions))
-                 :value "Show all sessions"}]]
-       (cond (= @current-page :exercises)
-             [:ul
-              (for [exc (:exercises @state)]
-                [:li {:key (:id exc)}  (:name exc) (str " (goal reps: " (:goal-reps exc) ")")])]
-             (= @current-page :sessions)
-             [sessions])])))
+  ;; (println @page-name)
+  (fn []
+    [:main
+     [:h1 {:on-click #(js/console.log "hei")
+           :style {:border-bottom "1px dotted black"}} "Certecomp"]
+     [:p
+      [:input {:type "button"
+               :on-click (fn []
+                           (swap! page-name (fn [m] (assoc-in m [:page-name] "exercises")))
+                           (fetch-exercises))
+               :value "Show all exercises"
+               :style {:margin-right "5px"}}]
+      [:input {:type "button"
+               :on-click (fn []
+                           (fetch-sessions)
+                           (swap! page-name (fn [m] (assoc-in m [:page-name] "sessions"))))
+               :value "Show all sessions"}]]
+     (cond (= (:page-name @page-name) "exercises")
+           [exercises]
+           (= (:page-name @page-name) "sessions")
+           [sessions]
+           :else [:div "Unknown page."])]))
 
 ;; -------------------------
 ;; Initialize app
