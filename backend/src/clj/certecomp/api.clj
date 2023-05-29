@@ -13,6 +13,7 @@
    [reitit.ring.middleware.exception :as exception]
    [reitit.ring.middleware.muuntaja :as rrmm]
    [ring.util.response :as resp]
+   [environ.core :as env]
    [taoensso.timbre :as timbre :refer [error]]))
 
 (s/def ::exercise-id int?)
@@ -143,9 +144,10 @@
 
 (defn add-cors [handler]
   (fn [request]
-    (let [response (handler request)]
+    (let [response (handler request)
+          dev-mode (env/env :dev)]
       (-> response
-          (assoc-in [:headers "Access-Control-Allow-Origin"] "http://127.0.0.1:3001")
+          (assoc-in [:headers "Access-Control-Allow-Origin"] (if dev-mode "http://127.0.0.1:3001" "vg.no"))
           (assoc-in [:headers "Access-Control-Allow-METHODS"] "GET,POST,DELETE")
           (assoc-in [:headers "Access-Control-Allow-Headers"] "content-type")))))
 

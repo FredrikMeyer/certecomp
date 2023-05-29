@@ -17,8 +17,9 @@
                  [org.xerial/sqlite-jdbc "3.23.1"]
                  [com.github.seancorfield/honeysql "2.4.1026"]
                  [org.clojure/data.json "2.4.0"] ;; for tests
-                 [reagent "1.1.1"]
-                 [reagent-utils "0.3.4"]]
+                 [environ "1.2.0"]
+                 [reagent "1.2.0"]
+                 [reagent-utils "0.3.6"]]
   :repl-options {:init-ns certecomp.core}
   :plugins [[lein-cloverage "1.2.4"]
             [lein-environ "1.1.0"]]

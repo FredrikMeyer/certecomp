@@ -116,11 +116,11 @@
 
 (defn get-sessions [{:keys [get-connection]}]
   (with-open [c (get-connection)]
-    (->> (-> (h/select :*)
-             (h/from :session)
-             hsql/format)
-         (jdbc/execute! c jdbc-opts)
-         (map (fn [r] (update-keys r (fn [k] (-> k name keyword))))))))
+    (->>
+     (jdbc/execute! c (-> (h/select :*)
+                          (h/from :session)
+                          hsql/format))
+     (map (fn [r] (update-keys r (fn [k] (-> k name keyword))))))))
 
 (defn delete-session [{:keys [get-connection]} {:keys [session-id]}]
   (with-open [c (get-connection)]
@@ -154,6 +154,11 @@
       :classname   "org.sqlite.JDBC"}))
 
   (require '[certecomp.utils :as u])
+
+  (let [c (fn [] (get-connection))
+        db {:get-connection c}]
+    (get-sessions db))
+
   (let [c (fn [] (get-connection))
         db {:get-connection c}]
     (create-session db {:date (u/get-current-time) :place "Myrens" :shape "ok"}))
@@ -161,10 +166,10 @@
         db {:get-connection c}]
     ;; (create-session db {:date (u/get-current-time) :place "Myrens" :shape "good"})
     (create-workout db {:session-id 4 :exercise-id 2}))
-    (let [c (fn [] (get-connection))
+  (let [c (fn [] (get-connection))
         db {:get-connection c}]
-      (create-set db {:workout-id 1 :reps 5 :weight 50}))
+    (create-set db {:workout-id 1 :reps 5 :weight 50}))
 
-      (let [c (fn [] (get-connection))
+  (let [c (fn [] (get-connection))
         db {:get-connection c}]
-        (get-workouts db)))
+    (get-workouts db)))
